@@ -26,13 +26,14 @@ exports.createTicket = asyncHandler(async (req, res) => {
   const category = await Category.findById(categoryId);
   if (!category) throw ApiError.badRequest('Select a valid category');
   const duplicate = await findDuplicate(req.user._id, categoryId, location);
-  if (duplicate) throw ApiError.conflict(`You already reported this issue. Existing ticket: ${duplicate._id}`, [{ field: 'ticketId', message: String(duplicate._id) }]);
+  if (duplicate) return res.status(409).json({ success: false, data: { ticketId: duplicate._id }, message: 'You already reported this issue in this location within the last 24 hours.' });
   let imageUrl;
   if (req.file) imageUrl = await uploadToCloudinary(req.file.buffer);
   const ticket = new Ticket({ title, description, category: categoryId, location, createdBy: req.user._id, imageUrl, slaDeadline: new Date(Date.now() + category.slaHours * 3600000) });
   const staff = await autoAssignTicket(ticket, categoryId);
   await ticket.save();
   await ActivityLog.create({ ticket: ticket._id, action: 'Ticket created', actor: req.user._id });
+  if (staff) await ActivityLog.create({ ticket: ticket._id, action: 'Ticket auto-assigned', meta: { assignedTo: staff._id } });
   if (staff) await notify([staff._id], `New ticket assigned: ${ticket.title}`, ticket._id);
   else {
     const admins = await User.find({ role: 'ADMIN', isActive: true }).select('_id');

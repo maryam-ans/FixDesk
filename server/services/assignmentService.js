@@ -103,6 +103,10 @@ async function reassignTicket(ticket, newStaffId, adminUser) {
   if (newStaff.role !== 'STAFF') {
     throw new ApiError(400, 'Ticket can only be assigned to a user with the STAFF role');
   }
+  const categoryId = ticket.category && ticket.category._id ? ticket.category._id : ticket.category;
+  if (!newStaff.categories.some((category) => category.toString() === categoryId.toString())) {
+    throw new ApiError(400, 'Staff member does not handle this ticket category');
+  }
 
   // 2. Validate ticket is not CLOSED
   if (ticket.status === 'CLOSED') {

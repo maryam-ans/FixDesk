@@ -1,9 +1,9 @@
 const router = require('express').Router();
 const authController = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
-const { validate } = require('../middleware/validate');
+const validate = require('../middleware/validate');
 const { loginLimiter } = require('../middleware/rateLimiter');
-const { registerSchema, loginSchema } = require('../validators/authValidator');
+const { registerSchema, loginSchema } = require('../validators/authValidators');
 
 // POST /register - Register a new user
 router.post('/register', validate(registerSchema), authController.register);

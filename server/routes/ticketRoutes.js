@@ -2,7 +2,7 @@ const router = require('express').Router();
 const ticketController = require('../controllers/ticketController');
 const commentController = require('../controllers/commentController');
 const { authenticate, authorize } = require('../middleware/auth');
-const { validate } = require('../middleware/validate');
+const validate = require('../middleware/validate');
 const { upload } = require('../middleware/upload');
 const {
   createTicketSchema,

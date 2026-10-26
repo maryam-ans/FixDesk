@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const adminController = require('../controllers/adminController');
 const { authenticate, authorize } = require('../middleware/auth');
-const { validate } = require('../middleware/validate');
+const validate = require('../middleware/validate');
 const {
   createCategorySchema,
   updateCategorySchema,

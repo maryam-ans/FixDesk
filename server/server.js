@@ -6,7 +6,7 @@ const morgan = require('morgan');
 const { connectDB } = require('./config/db');
 const config = require('./config');
 const routes = require('./routes');
-const { errorHandler } = require('./middleware/errorHandler');
+const errorHandler = require('./middleware/errorHandler');
 const { generalLimiter } = require('./middleware/rateLimiter');
 const { startSlaJob } = require('./jobs/slaCheck');
 

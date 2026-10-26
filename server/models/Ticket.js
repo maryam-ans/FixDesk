@@ -89,5 +89,6 @@ ticketSchema.index({ createdBy: 1 });
 ticketSchema.index({ category: 1 });
 ticketSchema.index({ slaDeadline: 1 });
 ticketSchema.index({ createdBy: 1, category: 1, location: 1, status: 1 });
+ticketSchema.index({ title: 'text', description: 'text', location: 'text' });
 
 module.exports = mongoose.model('Ticket', ticketSchema);

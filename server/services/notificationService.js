@@ -82,4 +82,5 @@ module.exports = {
   notifyUser,
   notifyAdmins,
   notifyTicketParties,
+  notify: (userIds, message, ticketId) => Promise.all([...new Set((userIds || []).filter(Boolean).map((id) => id.toString()))].map((userId) => createNotification(userId, message, ticketId))),
 };

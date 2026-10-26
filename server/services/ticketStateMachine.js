@@ -1,4 +1,6 @@
 const ApiError = require('../utils/ApiError');
+const { ActivityLog } = require('../models');
+const { notifyTicketParties } = require('./notificationService');
 
 // ---------------------------------------------------------------------------
 // Transition table – defines allowed status transitions and who can perform them
@@ -141,6 +143,8 @@ async function executeTransition(ticket, toStatus, user, note) {
 
   // 7. Persist and return
   await ticket.save();
+  await ActivityLog.create({ ticket: ticket._id, action: `Status changed to ${toStatus}`, actor: user._id, meta: { from: fromStatus, note } });
+  await notifyTicketParties(ticket, `Ticket “${ticket.title}” is now ${toStatus}`);
   return ticket;
 }
 

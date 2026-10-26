@@ -69,6 +69,7 @@ const createStaffSchema = z.object({
  */
 const updateStaffSchema = z.object({
   body: z.object({
+    name: z.string().min(2).max(50).optional(),
     isActive: z.boolean().optional(),
     categories: z
       .array(z.string())

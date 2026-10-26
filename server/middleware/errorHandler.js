@@ -60,6 +60,10 @@ const errorHandler = (err, req, res, _next) => {
     });
   }
 
+  if (err.name === 'MulterError') {
+    return res.status(400).json({ success: false, message: err.code === 'LIMIT_FILE_SIZE' ? 'Image must be smaller than 3 MB' : 'Invalid image upload', errors: [] });
+  }
+
   /* --- Fallback: unexpected / programmer error --- */
   const payload = {
     success: false,

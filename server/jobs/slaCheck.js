@@ -122,26 +122,25 @@ async function runSlaCheck() {
 
   for (const ticket of resolvedTickets) {
     if (await Comment.exists({ ticket: ticket._id, author: ticket.createdBy, createdAt: { $gt: ticket.resolvedAt } })) continue;
-    ticket.status = 'CLOSED';
-    ticket.closedAt = now;
-    ticket.statusHistory.push({
+    const claimed = await Ticket.findOneAndUpdate({ _id: ticket._id, status: 'RESOLVED', resolvedAt: { $lt: seventyTwoHoursAgo } }, { $set: { status: 'CLOSED', closedAt: now }, $push: { statusHistory: {
       from: 'RESOLVED',
       to: 'CLOSED',
       by: null,
+      at: now,
       note: 'Auto-closed after 72h with no response',
-    });
-    await ticket.save();
+    } } }, { new: true });
+    if (!claimed) continue;
 
     // Notify the ticket creator
     await Notification.create({
-      user: ticket.createdBy,
-      ticket: ticket._id,
-      message: `Your ticket "${ticket.title}" has been auto-closed after 72 hours`,
+      user: claimed.createdBy,
+      ticket: claimed._id,
+      message: `Your ticket "${claimed.title}" has been auto-closed after 72 hours`,
     });
 
     // Activity log
     await ActivityLog.create({
-      ticket: ticket._id,
+      ticket: claimed._id,
       action: 'Auto-closed',
     });
 

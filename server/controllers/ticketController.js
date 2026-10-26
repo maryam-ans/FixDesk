@@ -11,8 +11,8 @@ const { uploadToCloudinary } = require('../middleware/upload');
 
 const access = (ticket, user) => {
   if (user.role === 'ADMIN') return true;
-  if (user.role === 'STUDENT') return String(ticket.createdBy) === String(user._id);
-  return String(ticket.assignedTo || '') === String(user._id) || (user.categories || []).some((id) => String(id) === String(ticket.category?._id || ticket.category));
+  if (user.role === 'STUDENT') return String(ticket.createdBy?._id || ticket.createdBy) === String(user._id);
+  return String(ticket.assignedTo?._id || ticket.assignedTo || '') === String(user._id) || (user.categories || []).some((id) => String(id._id || id) === String(ticket.category?._id || ticket.category));
 };
 const loadTicket = async (id, user) => {
   if (!mongoose.isValidObjectId(id)) throw ApiError.notFound('Ticket not found');
@@ -54,6 +54,10 @@ exports.getTickets = asyncHandler(async (req, res) => {
   if (overdue === 'true') { query.slaDeadline = { $lt: new Date() }; query.status = { $nin: ['RESOLVED', 'CLOSED'] }; }
   const safeLimit = Math.min(50, Math.max(1, Number(limit) || 10));
   const [tickets, total] = await Promise.all([Ticket.find(query).populate('category', 'name slaHours').populate('createdBy', 'name').populate('assignedTo', 'name').sort(sort || '-createdAt').skip((Number(page) - 1) * safeLimit).limit(safeLimit), Ticket.countDocuments(query)]);
+  if (req.user.role === 'STAFF') {
+    const rank = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+    tickets.sort((a, b) => rank[a.priority] - rank[b.priority] || new Date(a.slaDeadline) - new Date(b.slaDeadline));
+  }
   sendSuccess(res, { tickets, pagination: { page: Number(page), limit: safeLimit, total, pages: Math.ceil(total / safeLimit) } });
 });
 exports.getTicketById = asyncHandler(async (req, res) => {
@@ -70,9 +74,6 @@ exports.updateTicketStatus = asyncHandler(async (req, res) => {
   const ticket = await loadTicket(req.params.id, req.user);
   if (req.user.role === 'STAFF' && String(ticket.assignedTo || '') !== String(req.user._id)) throw ApiError.notFound('Ticket not found');
   await executeTransition(ticket, req.body.status, req.user, req.body.note);
-  const involved = [ticket.createdBy, ticket.assignedTo].filter(Boolean).filter((id) => String(id) !== String(req.user._id));
-  await notify(involved, `Ticket “${ticket.title}” is now ${ticket.status}`, ticket._id);
-  await ActivityLog.create({ ticket: ticket._id, action: `Status changed to ${ticket.status}`, actor: req.user._id, meta: { note: req.body.note } });
   sendSuccess(res, ticket, 'Ticket status updated');
 });
 exports.assignTicket = asyncHandler(async (req, res) => {

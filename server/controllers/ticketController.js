@@ -73,7 +73,8 @@ exports.getSimilarTickets = asyncHandler(async (req, res) => {
 });
 exports.updateTicketStatus = asyncHandler(async (req, res) => {
   const ticket = await loadTicket(req.params.id, req.user);
-  if (req.user.role === 'STAFF' && String(ticket.assignedTo || '') !== String(req.user._id)) throw ApiError.notFound('Ticket not found');
+  // loadTicket populates assignedTo, so compare the referenced user's ID.
+  if (req.user.role === 'STAFF' && String(ticket.assignedTo?._id || ticket.assignedTo || '') !== String(req.user._id)) throw ApiError.notFound('Ticket not found');
   await executeTransition(ticket, req.body.status, req.user, req.body.note);
   sendSuccess(res, ticket, 'Ticket status updated');
 });

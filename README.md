@@ -67,7 +67,7 @@ Requirements: Node.js 20+, npm and a MongoDB instance (local or Atlas).
 1. Copy `server/.env.example` to `server/.env`; set `MONGO_URI` and a long random `JWT_SECRET`.
 2. Copy `client/.env.example` to `client/.env`.
 3. Install dependencies in `server/` and `client/` with `npm install`.
-4. From `server/`, run `npm run seed` to create demo data.
+4. From `server/`, run `npm run seed:categories` to add the standard issue categories, then `npm run seed:accounts` to add missing demo admin and staff accounts. These commands preserve existing users and tickets. Run `npm run seed` only for a fresh demo database; it resets existing collections before creating demo data.
 5. Start the API with `npm run dev` in `server/`; start Vite with `npm run dev` in `client/`.
 6. Open `http://localhost:5173`; API health is at `http://localhost:5000/api/health`.
 
@@ -91,7 +91,7 @@ Never commit `.env` files or production credentials.
 
 ## Seed/Demo Credentials
 
-All accounts created by `npm run seed` use password `FixDeskDemo!26`.
+Demo admin and staff accounts created by `npm run seed:accounts` use password `FixDeskDemo!26` unless `DEMO_ACCOUNT_PASSWORD` is set. All accounts created by the full `npm run seed` use the default password.
 
 | Role | Email |
 |---|---|
@@ -111,7 +111,7 @@ All endpoints are rooted at `/api`; successful responses use `{ success, data, m
 | Tickets | `POST/GET /tickets`, `GET /tickets/:id`, `PATCH /tickets/:id/status`, `PATCH /tickets/:id/assign`, `POST /tickets/:id/comments`, `GET /tickets/similar` |
 | Notifications | `GET /notifications`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all` |
 | Admin | `/admin/categories`, `/admin/staff`, `/admin/analytics/*`, `POST /admin/jobs/run-sla-check` |
-| Health | `GET /health` |
+| Health | `GET /api/health` |
 
 Pass JWTs as `Authorization: Bearer <token>`. Pagination uses `page` and `limit`; ticket lists accept status, category, priority, search, assignment and overdue filters.
 
@@ -120,13 +120,6 @@ Pass JWTs as `Authorization: Bearer <token>`. Pagination uses `page` and `limit`
 Run `cd server && npm test`. Jest/Supertest tests cover workflow transitions, assignment fairness, duplicate checks, tenant isolation and SLA idempotency. Tests use an ephemeral MongoDB when integration setup is enabled; no real campus data is needed.
 
 ## Deployment
-
-1. Create a MongoDB Atlas cluster and database user; allow the backend host to connect, then use its connection URI as `MONGO_URI`.
-2. Deploy `server/` as a Render web service with build command `npm install`, start command `npm start`, and set the server environment variables. Set `CLIENT_URL` to the deployed frontend origin.
-3. Deploy `client/` to Vercel with root directory `client`, build command `npm run build`, output `dist`, and `VITE_API_URL` set to the Render API URL plus `/api`. The included `client/vercel.json` supplies SPA rewrites.
-4. Replace demo secrets and verify `/api/health`, CORS, signup and admin workflows.
-
-Render's free tier may sleep. A sleeping service can delay cron runs, so administrators can trigger the same idempotent SLA job with `POST /api/admin/jobs/run-sla-check` after signing in.
 
 **Live links:** Frontend: `[add Vercel URL]` · API: `[add Render URL]`
 

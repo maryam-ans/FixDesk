@@ -60,12 +60,12 @@ async function notifyTicketParties(ticket, message) {
 
   // Always notify the ticket creator
   if (ticket.createdBy) {
-    recipientIds.add(ticket.createdBy.toString());
+    recipientIds.add(String(ticket.createdBy._id || ticket.createdBy));
   }
 
   // Notify the assigned staff member if present
   if (ticket.assignedTo) {
-    recipientIds.add(ticket.assignedTo.toString());
+    recipientIds.add(String(ticket.assignedTo._id || ticket.assignedTo));
   }
 
   const notifications = await Promise.all(

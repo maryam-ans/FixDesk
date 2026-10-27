@@ -1,6 +1,64 @@
 import{useEffect,useState}from'react';import{Link,Navigate,Route,Routes,useNavigate,useParams}from'react-router-dom';import api from'./api/client';import{useAuth}from'./context/AuthContext';import{Bar,BarChart,CartesianGrid,Line,LineChart,Pie, PieChart,Cell,Tooltip,XAxis,YAxis,ResponsiveContainer}from'recharts';
 const roles={STUDENT:'Student',STAFF:'Staff',ADMIN:'Administrator'};function Protected({children,rolesAllowed}){const{user,loading}=useAuth();if(loading)return <p className="loading">Loading your workspace…</p>;if(!user)return <Navigate to="/login" replace/>;if(rolesAllowed&&!rolesAllowed.includes(user.role))return <Navigate to="/" replace/>;return children;}
-function Shell({children}){const{user,logout}=useAuth();const[notes,setNotes]=useState([]);useEffect(()=>{if(!user)return;const load=()=>api.get('/notifications').then(r=>setNotes(r.data.data.notifications||r.data.data||[])).catch(()=>{});load();const id=setInterval(load,30000);return()=>clearInterval(id)},[user]);const unread=notes.filter(n=>!n.isRead).length;return <><header><Link className="brand" to="/">FixDesk<span>Campus Care</span></Link><nav><Link to="/">Dashboard</Link>{user.role==='STUDENT'&&<Link to="/new">Report issue</Link>}{user.role==='ADMIN'&&<><Link to="/staff">Staff</Link><Link to="/categories">Categories</Link><Link to="/analytics">Analytics</Link></>}<span className="user">{user.name} · {roles[user.role]}</span><button className="quiet" onClick={()=>api.patch('/notifications/read-all').then(()=>setNotes(notes.map(n=>({...n,isRead:true})))).catch(()=>{})}>Alerts {unread>0&&<b>{unread}</b>}</button><button className="quiet" onClick={logout}>Sign out</button></nav></header><main>{children}</main></>}
+function Shell({children}){
+  const{user,logout}=useAuth();
+  const navigate=useNavigate();
+  const[notes,setNotes]=useState([]),[notificationsOpen,setNotificationsOpen]=useState(false),[notificationError,setNotificationError]=useState('');
+
+  useEffect(()=>{
+    if(!user)return;
+    const load=()=>api.get('/notifications').then(r=>{
+      const payload=r.data.data;
+      setNotes(payload.notifications||[]);
+      setNotificationError('');
+    }).catch(()=>setNotificationError('Could not load notifications.'));
+    load();
+    const id=setInterval(load,30000);
+    return()=>clearInterval(id);
+  },[user]);
+
+  const unread=notes.filter(n=>!n.isRead).length;
+  async function markAllRead(){
+    try{
+      await api.patch('/notifications/read-all');
+      setNotes(current=>current.map(n=>({...n,isRead:true})));
+    }catch{setNotificationError('Could not mark notifications as read.');}
+  }
+  async function openNotification(note){
+    try{
+      if(!note.isRead)await api.patch(`/notifications/${note._id}/read`);
+      setNotes(current=>current.map(n=>n._id===note._id?{...n,isRead:true}:n));
+      setNotificationsOpen(false);
+      if(note.ticket)navigate(`/tickets/${note.ticket}`);
+    }catch{setNotificationError('Could not open this notification.');}
+  }
+
+  return <><header>
+    <Link className="brand" to="/">FixDesk<span>Campus Care</span></Link>
+    <nav>
+      <div className="nav-links">
+        <Link to="/">Dashboard</Link>
+        {user.role==='STUDENT'&&<Link to="/new">Report issue</Link>}
+        {user.role==='ADMIN'&&<><Link to="/staff">Staff</Link><Link to="/categories">Categories</Link><Link to="/analytics">Analytics</Link></>}
+      </div>
+      <div className="nav-actions">
+        <span className="user">{user.name} · {roles[user.role]}</span>
+        <div className="alerts-control">
+          <button className="quiet" type="button" aria-expanded={notificationsOpen} aria-controls="notification-menu" onClick={()=>setNotificationsOpen(open=>!open)}>
+            Alerts {unread>0&&<b>{unread}</b>}
+          </button>
+          {notificationsOpen&&<section className="notification-menu" id="notification-menu" aria-label="Notifications">
+            <div className="notification-heading"><strong>Notifications</strong>{unread>0&&<button type="button" className="mark-read" onClick={markAllRead}>Mark all read</button>}</div>
+            {notificationError?<p className="notification-empty">{notificationError}</p>:notes.length===0?<p className="notification-empty">You’re all caught up.</p>:notes.map(note=><button type="button" className={`notification-item${note.isRead?' read':''}`} key={note._id} onClick={()=>openNotification(note)}>
+              <span>{note.message}</span><small>{note.createdAt?new Date(note.createdAt).toLocaleString():''}</small>
+            </button>)}
+          </section>}
+        </div>
+        <button className="quiet" type="button" onClick={logout}>Sign out</button>
+      </div>
+    </nav>
+  </header><main>{children}</main></>;
+}
 function AuthPage({register=false}){const{user,login,register:signup}=useAuth();const nav=useNavigate();const[busy,setBusy]=useState(false),[error,setError]=useState('');if(user)return <Navigate to="/"/>;async function submit(e){e.preventDefault();setBusy(true);setError('');try{const f=new FormData(e.currentTarget);const v=Object.fromEntries(f);if(register)await signup(v);else await login(v);nav('/')}catch(x){setError(x.response?.data?.message||'Could not connect to FixDesk. Please retry.')}finally{setBusy(false)}}return <div className="auth"><div className="hero"><p className="eyebrow">CAMPUS ISSUE TRACKING</p><h1>Small issues,<br/><em>handled.</em></h1><p>Every campus issue gets an owner, a deadline and a clear path to resolution.</p></div><form className="card authbox" onSubmit={submit}><p className="eyebrow">FIXDESK · YOUR CAMPUS</p><h2>{register?'Create student account':'Welcome back'}</h2>{register&&<label>Full name<input name="name" required minLength="2" autoComplete="name"/></label>}<label>Email<input name="email" type="email" required autoComplete="email"/></label><label>Password<input name="password" type="password" required minLength="6" autoComplete={register?'new-password':'current-password'}/></label>{error&&<p className="error">{error}</p>}<button disabled={busy}>{busy?'Please wait…':register?'Create account':'Sign in'}</button><p className="muted">{register?'Already registered? ':'New to FixDesk? '}<Link to={register?'/login':'/register'}>{register?'Sign in':'Create an account'}</Link></p></form></div>}
 function Dashboard(){const{user}=useAuth();const[data,setData]=useState(null),[error,setError]=useState(''),[page,setPage]=useState(1),[query,setQuery]=useState({}),[staff,setStaff]=useState([]),[categories,setCategories]=useState([]);async function load(p=page,q=query){try{const r=await api.get('/tickets',{params:{page:p,limit:10,...q}});setData(r.data.data)}catch(e){setError(e.response?.data?.message||'Unable to load tickets')}}useEffect(()=>{load(1,{});if(user.role==='ADMIN'){api.get('/admin/staff').then(r=>setStaff(r.data.data)).catch(()=>{});api.get('/admin/categories').then(r=>setCategories(r.data.data)).catch(()=>{})}},[]);const tickets=data?.tickets||[];return <><div className="heading"><div><p className="eyebrow">{new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</p><h1>{user.role==='STUDENT'?'Your issues':user.role==='STAFF'?'Assigned queue':'Campus overview'}</h1><p className="muted">{user.role==='STUDENT'?'Follow every report from intake through resolution.':user.role==='STAFF'?'Prioritized by urgency and service deadline.':'Live operational view across campus.'}</p></div>{user.role==='STUDENT'&&<Link className="button" to="/new">＋ Report an issue</Link>}</div>{error&&<div className="error">{error}</div>}<div className="statgrid"><Stat title="Open" value={tickets.filter(t=>!['CLOSED','RESOLVED'].includes(t.status)).length}/><Stat title="In progress" value={tickets.filter(t=>t.status==='IN_PROGRESS').length}/><Stat title="Awaiting confirmation" value={tickets.filter(t=>t.status==='RESOLVED').length}/></div>{user.role==='ADMIN'&&<form className="card inlineform" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);const q=Object.fromEntries([...f].filter(([,v])=>v));setPage(1);setQuery(q);load(1,q)}}><input name="q" placeholder="Search title or details"/><select name="status"><option value="">All statuses</option>{['OPEN','ASSIGNED','IN_PROGRESS','RESOLVED','CLOSED','REOPENED'].map(x=><option key={x}>{x}</option>)}</select><select name="category"><option value="">All categories</option>{categories.map(c=><option key={c._id} value={c._id}>{c.name}</option>)}</select><select name="priority"><option value="">All priorities</option>{['LOW','MEDIUM','HIGH','CRITICAL'].map(x=><option key={x}>{x}</option>)}</select><button>Filter</button></form>}<section className="card"><div className="sectionhead"><h2>{user.role==='STUDENT'?'Recent reports':user.role==='ADMIN'?'All tickets':'Work queue'}</h2><span className="muted">{data?.pagination?.total||0} total</span></div>{!data?<p className="muted">Loading reports…</p>:tickets.length===0?<div className="empty"><div>✳</div><h3>Nothing needs attention yet</h3><p>Your reports will appear here as soon as you create one.</p></div>:<><div className="tablewrap"><table><thead><tr><th>Issue</th><th>Category</th><th>Status</th><th>Priority</th><th>Service deadline</th>{user.role==='ADMIN'&&<th>Assigned technician</th>}</tr></thead><tbody>{tickets.map(t=><tr key={t._id}><td><Link to={`/tickets/${t._id}`}><strong>{t.title}</strong></Link><small>{t.location}</small></td><td>{t.category?.name}</td><td><span className={`chip ${t.status.toLowerCase()}`}>{t.status.replace('_',' ')}</span></td><td>{t.priority}</td><td className={new Date(t.slaDeadline)<Date.now()&&!['RESOLVED','CLOSED'].includes(t.status)?'late':''}>{t.slaDeadline?new Date(t.slaDeadline).toLocaleDateString(): '—'}</td>{user.role==='ADMIN'&&<td><select aria-label={`Assign ${t.title}`} value={t.assignedTo?._id||''} onChange={e=>api.patch(`/tickets/${t._id}/assign`,{assignedTo:e.target.value}).then(()=>load()).catch(x=>setError(x.response?.data?.message||'Assignment failed'))}><option value="" disabled>Assign staff</option>{staff.filter(s=>s.isActive).map(s=><option key={s._id} value={s._id}>{s.name}</option>)}</select></td>}</tr>)}</tbody></table></div><div className="sectionhead"><button className="secondary" disabled={page<=1} onClick={()=>{const p=page-1;setPage(p);load(p)}}>Previous</button><span className="muted">Page {data.pagination.page} of {Math.max(1,data.pagination.pages)}</span><button className="secondary" disabled={page>=data.pagination.pages} onClick={()=>{const p=page+1;setPage(p);load(p)}}>Next</button></div></>}</section></>}
 function Stat({title,value}){return <div className="card stat"><span>{title}</span><strong>{value}</strong></div>}

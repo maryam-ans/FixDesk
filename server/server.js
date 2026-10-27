@@ -52,9 +52,8 @@ app.use(errorHandler);
 // Start server (only if not in test mode)
 if (config.NODE_ENV !== 'test') {
   connectDB().then(() => {
-    app.listen(config.PORT, () => {
-      console.log(`🚀 FixDesk API running on port ${config.PORT}`);
-      console.log(`📊 Environment: ${config.NODE_ENV}`);
+    app.listen(config.PORT, '0.0.0.0', () => {
+      console.log(` FixDesk API running on port ${config.PORT}`);
       startSlaJob();
     });
   });

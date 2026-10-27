@@ -121,11 +121,11 @@ Run `cd server && npm test`. Jest/Supertest tests cover workflow transitions, as
 
 ## Deployment
 
-**Live links:** Frontend: `[add Vercel URL]` · API: `[add Render URL]`
+**Live links:** Frontend: `https://fixdesk-henna.vercel.app` · API: `https://fixdesk-r095.onrender.com/ap`
 
-## Screenshots
+## Project Demo Video
 
-_Add screenshots of the student dashboard, technician queue and admin analytics here._
+https://drive.google.com/file/d/1Zl6i6M36jCN_fCDtgFGp7dVPuoZ-Yt7P/view?usp=sharing
 
 ## Future Improvements
 
